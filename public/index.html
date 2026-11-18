@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trailhead — clickstream demo</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #16241f; background: #f4f7f4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 20px max(24px, calc((100vw - 1080px)/2)); background: white; border-bottom: 1px solid #e0e8e2; }
+    .brand { font-weight: 800; letter-spacing: -.04em; font-size: 22px; }
+    .pill { color: #226647; background: #e7f5eb; padding: 8px 12px; border-radius: 100px; font-size: 13px; }
+    main { max-width: 1080px; margin: 64px auto; padding: 0 24px; display: grid; grid-template-columns: 1.25fr .75fr; gap: 56px; align-items: start; }
+    .eyebrow { text-transform: uppercase; color: #367654; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+    h1 { font-size: clamp(42px, 7vw, 72px); line-height: 1.02; letter-spacing: -.06em; margin: 16px 0; max-width: 620px; }
+    p { color: #5d6a63; line-height: 1.65; }
+    button { border: 0; border-radius: 10px; padding: 14px 18px; background: #176943; color: white; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #e7eee9; color: #253c30; }
+    .card { background: white; border: 1px solid #e1e9e3; border-radius: 18px; padding: 24px; box-shadow: 0 12px 34px #1638230b; }
+    .card h2 { margin: 0 0 12px; }
+    .metric { font-size: 34px; font-weight: 800; letter-spacing: -.05em; }
+    .status { min-height: 24px; font-size: 13px; color: #53675a; }
+    .events { display: grid; gap: 8px; margin-top: 16px; }
+    .event { border-top: 1px solid #e8eee9; padding-top: 10px; display: flex; justify-content: space-between; font-size: 13px; }
+    @media (max-width: 740px) { main { grid-template-columns: 1fr; margin: 36px auto; gap: 28px; } header { padding: 16px 24px; } }
+  </style>
+</head>
+<body>
+  <header><div class="brand">trailhead</div><div class="pill">Local clickstream demo</div></header>
+  <main>
+    <section>
+      <div class="eyebrow">A sample product page</div>
+      <h1>Find your next good idea.</h1>
+      <p>Click around this demo. The browser sends only a page, an event type, an anonymous session ID, and a button label. The collector writes each event to Kinesis; a consumer forwards it to SQS for aggregation.</p>
+      <p><button data-track="start-trial">Start free trial</button> <button class="secondary" data-track="view-pricing">View pricing</button></p>
+      <div id="send-status" class="status" aria-live="polite">Waiting for your first click…</div>
+    </section>
+    <aside class="card">
+      <h2>Live event summary</h2>
+      <div id="event-count" class="metric">0</div>
+      <div class="status">events processed from the local stream</div>
+      <div id="events" class="events"></div>
+    </aside>
+  </main>
+  <script>
+    const sessionKey = "clickstream-demo-session";
+    const sessionId = sessionStorage.getItem(sessionKey) || crypto.randomUUID();
+    sessionStorage.setItem(sessionKey, sessionId);
+    const statusNode = document.querySelector("#send-status");
+
+    document.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-track]");
+      if (!button) return;
+      statusNode.textContent = "Sending event…";
+      try {
+        const response = await fetch("/api/events", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ target: button.dataset.track, page: location.pathname, sessionId })
+        });
+        if (!response.ok) throw new Error((await response.json()).error || "Collector rejected event");
+        statusNode.textContent = "Click captured and accepted by the stream.";
+      } catch (error) {
+        statusNode.textContent = `Could not send event: ${error.message}`;
+      }
+    });
+
+    async function refreshSummary() {
+      const response = await fetch("/api/summary");
+      if (!response.ok) return;
+      const summary = await response.json();
+      document.querySelector("#event-count").textContent = summary.processedEvents;
+      const list = document.querySelector("#events");
+      list.replaceChildren(...summary.recentEvents.map((item) => {
+        const row = document.createElement("div");
+        const target = document.createElement("span");
+        const time = document.createElement("span");
+        row.className = "event";
+        target.textContent = `${item.target} · ${item.page}`;
+        time.textContent = new Date(item.occurredAt).toLocaleTimeString();
+        row.append(target, time);
+        return row;
+      }));
+    }
+    refreshSummary();
+    setInterval(refreshSummary, 1500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "clickstream-reliability-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "powershell -ExecutionPolicy Bypass -File .\\scripts\\smoke-test.ps1",
+    "start": "node src/server.mjs",
+    "read": "node src/read.mjs",
+    "consumer": "node src/consumer.mjs",
+    "worker": "node src/worker.mjs",
+    "test": "node --test test/event.test.mjs test/records.test.mjs test/aggregate.test.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-kinesis": "^3.900.0",
+    "@aws-sdk/client-sqs": "^3.900.0",
+    "@aws-sdk/credential-providers": "^3.900.0",
+    "@smithy/node-http-handler": "^4.2.0"
+  }
+}

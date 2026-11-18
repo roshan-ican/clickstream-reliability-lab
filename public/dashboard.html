@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clickstream | Portfolio clicks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ground: #f2f4f7;
+      --surface: #ffffff;
+      --raised: #e8ebef;
+      --border: #e6e6e6;
+      --rule: #f0f0f0;
+      --control: #d4d4d4;
+      --text: #0a0a0a;
+      --muted: #6b6b6b;
+      --accent: #141414;
+      --positive: #2e7d32;
+      --negative: #c4242a;
+      --chart-2: #8a8a8a;
+      --chart-3: #1d5fbf;
+      --radius-card: 8px;
+      --radius-control: 6px;
+      --gap: 12px;
+      --pad: 24px;
+      --control-height: 36px;
+      --row-height: 44px;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ground); }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--ground);
+      font-family: "Geist", Inter, system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+    }
+    button { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--chart-3); outline-offset: 2px; }
+
+    .bar {
+      height: 48px;
+      max-width: 1148px;
+      margin: 0 auto;
+      padding: 0 var(--pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--gap);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand svg { flex: none; }
+    .brand strong { font-weight: 500; }
+    .scope { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--muted); white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chart-2); flex: none; }
+    .dot.ok { background: var(--positive); }
+    .dot.bad { background: var(--negative); }
+
+    main { max-width: 1148px; margin: 0 auto; padding: 24px var(--pad) 48px; }
+
+    .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    h1 { margin: 0; font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -0.01em; }
+    .finding { margin: 6px 0 0; color: var(--muted); font-size: 16px; max-width: 62ch; }
+    .controls { display: flex; align-items: center; gap: var(--gap); flex-wrap: wrap; }
+
+    .segmented { display: inline-flex; padding: 2px; background: var(--raised); border-radius: var(--radius-control); height: var(--control-height); }
+    .segmented button { border: 0; background: transparent; padding: 0 12px; border-radius: 4px; cursor: pointer; color: var(--muted); }
+    .segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 500; }
+    .primary { height: var(--control-height); padding: 0 16px; border: 0; border-radius: var(--radius-control); background: var(--accent); color: #fff; font-weight: 500; cursor: pointer; min-width: 84px; }
+    .primary:hover { background: #333; }
+
+    .stack { display: grid; gap: var(--gap); }
+
+    .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--border); border-radius: var(--radius-card); overflow: hidden; }
+    .kpi { background: var(--surface); padding: 16px var(--pad) 18px; }
+    .kpi .label { color: var(--muted); font-weight: 500; }
+    .kpi .value { margin-top: 4px; font-size: 24px; line-height: 1.2; font-weight: 400; }
+    .kpi .value.zero { color: var(--muted); }
+    .kpi .unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+    .kpi .dash { font-size: 14px; color: var(--muted); }
+
+    .split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--gap); }
+    .card { background: var(--surface); border-radius: var(--radius-card); padding: var(--pad); min-width: 0; }
+    .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .card-head h2 { margin: 0; font-size: 16px; font-weight: 500; }
+    .card-head span { color: var(--muted); }
+
+    #chart { width: 100%; }
+    #chart svg { display: block; }
+    .tick { fill: var(--muted); font-size: 11px; font-family: inherit; }
+
+    .ranking { list-style: none; margin: 0; padding: 0; }
+    .ranking li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: baseline; height: 44px; }
+    .ranking .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ranking .count { text-align: right; }
+    .ranking .track { grid-column: 1 / -1; height: 2px; align-self: start; margin-top: 6px; }
+    .ranking .fill { height: 2px; background: var(--chart-2); }
+    .ranking li.top .fill { background: var(--text); }
+
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th { text-align: left; font-weight: 400; color: var(--muted); font-size: 12px; height: 36px; border-bottom: 1px solid var(--border); }
+    td { height: var(--row-height); border-bottom: 1px solid var(--rule); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .col-type { width: 190px; }
+    .col-page { width: 20%; }
+    .col-session { width: 110px; }
+    .col-when { width: 110px; text-align: right; padding-right: 0; }
+    th.col-when { text-align: right; }
+    .type-cell { display: flex; align-items: center; gap: 10px; }
+    .fresh { width: 6px; height: 6px; border-radius: 50%; flex: none; background: transparent; }
+    .fresh.on { background: var(--chart-3); }
+    .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #eeeeee; color: #3d3d3d; font-size: 12px; font-weight: 500; line-height: 20px; }
+    .sub { display: none; color: var(--muted); font-size: 12px; line-height: 16px; }
+    .session { font-family: "Geist Mono", ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+    .empty { margin: 0; padding: 28px 0 8px; color: var(--muted); }
+
+    .card-head.tools { align-items: center; flex-wrap: wrap; }
+    .head-tools { display: flex; align-items: center; gap: var(--gap); flex-wrap: wrap; justify-content: flex-end; }
+    .card.column { display: flex; flex-direction: column; }
+    .card-foot { margin: auto 0 0; padding-top: 16px; color: var(--muted); }
+
+    @media (max-width: 960px) {
+      .split { grid-template-columns: minmax(0, 1fr); }
+      .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .kpi:last-child { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .bar, main { padding-left: 16px; padding-right: 16px; }
+      .scope { display: none; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi:last-child { grid-column: 1 / -1; }
+      .kpi { padding: 14px 16px 16px; }
+      .card { padding: 16px; }
+      .col-page, .col-session, th.col-page, th.col-session, td.col-page, td.col-session { display: none; }
+      .col-type { width: 44%; }
+      .col-when { width: 28%; }
+      td { height: 56px; }
+      td.col-target { white-space: normal; }
+      .sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .segmented { width: 100%; }
+      .segmented button { flex: 1; padding: 0 6px; }
+      .controls { width: 100%; }
+      .head-tools { width: 100%; justify-content: space-between; }
+      .primary { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="8.25" stroke="#0a0a0a" stroke-width="1.5"></circle>
+        <circle cx="10" cy="10" r="2.75" fill="#1d5fbf"></circle>
+      </svg>
+      <strong>Clickstream</strong>
+      <span class="scope">my-portfolio · localhost:3000</span>
+    </div>
+    <div class="status"><span id="status-dot" class="dot"></span><span id="status-text">Connecting</span></div>
+  </header>
+
+  <main>
+    <div class="title-row">
+      <div>
+        <h1>Clicks</h1>
+        <p id="finding" class="finding">Connecting to the collector.</p>
+      </div>
+      <div class="controls">
+        <button id="pause" class="primary" type="button">Pause</button>
+      </div>
+    </div>
+
+    <div class="stack">
+      <section class="kpis" aria-label="Last hour">
+        <div class="kpi"><div class="label">Events</div><div id="kpi-events" class="value">0</div></div>
+        <div class="kpi"><div class="label">Clicks</div><div id="kpi-clicks" class="value">0</div></div>
+        <div class="kpi"><div class="label">Page views</div><div id="kpi-views" class="value">0</div></div>
+        <div class="kpi"><div class="label">Sessions</div><div id="kpi-sessions" class="value">0</div></div>
+        <div class="kpi"><div class="label">Since last event</div><div id="kpi-last" class="value"><span class="dash">–</span></div></div>
+      </section>
+
+      <div class="split">
+        <section class="card" aria-labelledby="chart-title">
+          <div class="card-head"><h2 id="chart-title">Events per minute</h2><span>Last 30 minutes</span></div>
+          <div id="chart"></div>
+        </section>
+        <section class="card column" aria-labelledby="top-title">
+          <div class="card-head"><h2 id="top-title">Most clicked</h2><span>Last hour</span></div>
+          <ul id="top" class="ranking"></ul>
+          <p id="top-empty" class="empty" hidden>No clicks in the last hour.</p>
+          <p id="top-foot" class="card-foot"></p>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="feed-title">
+        <div class="card-head tools">
+          <h2 id="feed-title">Live feed</h2>
+          <div class="head-tools">
+            <span id="feed-count"></span>
+            <div class="segmented" role="group" aria-label="Filter the live feed">
+              <button type="button" data-filter="all" aria-pressed="true">All</button>
+              <button type="button" data-filter="clicks" aria-pressed="false">Clicks</button>
+              <button type="button" data-filter="views" aria-pressed="false">Page views</button>
+              <button type="button" data-filter="scrolls" aria-pressed="false">Scrolls</button>
+            </div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="col-type" scope="col">Event</th>
+              <th class="col-target" scope="col">Target</th>
+              <th class="col-page" scope="col">Page</th>
+              <th class="col-session" scope="col">Session</th>
+              <th class="col-when" scope="col">When</th>
+            </tr>
+          </thead>
+          <tbody id="feed"></tbody>
+        </table>
+        <p id="feed-empty" class="empty" hidden></p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const TYPE_LABEL = { button_click: "Click", link_click: "Link click", page_view: "Page view", scroll_depth: "Scroll" };
+    const FILTERS = {
+      all: () => true,
+      clicks: (e) => e.eventType === "button_click" || e.eventType === "link_click",
+      views: (e) => e.eventType === "page_view",
+      scrolls: (e) => e.eventType === "scroll_depth"
+    };
+    const MINUTE = 60000;
+    const HOUR = 60 * MINUTE;
+    const BUCKETS = 30;
+    const FEED_ROWS = 12;
+    const POLL_MS = 1500;
+    const state = { events: [], skew: 0, filter: "all", paused: false, error: false, loaded: false, fetchedAt: 0 };
+
+    const $ = (id) => document.getElementById(id);
+    const now = () => Date.now() + state.skew;
+    const stamp = (e) => Date.parse(e.receivedAt);
+    const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+    const svgEl = (tag, attrs) => {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+      return node;
+    };
+    const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    function age(ms) {
+      if (ms < MINUTE) return { value: Math.max(0, Math.floor(ms / 1000)), unit: "s" };
+      if (ms < HOUR) return { value: Math.floor(ms / MINUTE), unit: "min" };
+      return { value: Math.floor(ms / HOUR), unit: "h" };
+    }
+
+    function whenLabel(e) {
+      const ms = now() - stamp(e);
+      if (ms >= HOUR) return clock(stamp(e));
+      const a = age(ms);
+      return `${a.value} ${a.unit} ago`;
+    }
+
+    async function poll() {
+      if (state.paused) return;
+      try {
+        const res = await fetch("/api/events", { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        state.events = data.events;
+        state.skew = Date.parse(data.now) - Date.now();
+        state.fetchedAt = Date.now();
+        state.error = false;
+        state.loaded = true;
+      } catch {
+        state.error = true;
+      }
+      render();
+    }
+
+    function renderStatus() {
+      const dot = $("status-dot");
+      dot.className = "dot " + (state.error ? "bad" : state.paused ? "" : state.loaded ? "ok" : "");
+      if (state.error) $("status-text").textContent = "Collector not reachable on 127.0.0.1:8787";
+      else if (state.paused) $("status-text").textContent = "Paused";
+      else if (!state.loaded) $("status-text").textContent = "Connecting";
+      else $("status-text").textContent = `Live · updated ${Math.max(0, Math.round((Date.now() - state.fetchedAt) / 1000))} s ago`;
+    }
+
+    function setCount(id, value) {
+      const node = $(id);
+      node.textContent = value.toLocaleString();
+      node.classList.toggle("zero", value === 0);
+    }
+
+    function topTargets(hour) {
+      const counts = new Map();
+      for (const e of hour) {
+        if (FILTERS.clicks(e) && e.target) counts.set(e.target, (counts.get(e.target) || 0) + 1);
+      }
+      return [...counts].sort((a, b) => b[1] - a[1]);
+    }
+
+    function renderKpis(hour) {
+      setCount("kpi-events", hour.length);
+      setCount("kpi-clicks", hour.filter(FILTERS.clicks).length);
+      setCount("kpi-views", hour.filter(FILTERS.views).length);
+      setCount("kpi-sessions", new Set(hour.map((e) => e.sessionId)).size);
+      const last = $("kpi-last");
+      last.replaceChildren();
+      last.classList.remove("zero");
+      if (!state.events.length) {
+        const dash = document.createElement("span");
+        dash.className = "dash";
+        dash.textContent = "–";
+        last.append(dash);
+        return;
+      }
+      const a = age(now() - stamp(state.events[0]));
+      const unit = document.createElement("span");
+      unit.className = "unit";
+      unit.textContent = a.unit;
+      last.append(String(a.value), unit);
+    }
+
+    function renderFinding(hour, targets) {
+      const node = $("finding");
+      if (state.error) {
+        node.textContent = "The collector is not answering. Start it with npm start in the project folder.";
+        return;
+      }
+      if (!state.loaded) {
+        node.textContent = "Connecting to the collector.";
+        return;
+      }
+      if (!state.events.length) {
+        node.textContent = "No events yet. Open localhost:3000 and click something.";
+        return;
+      }
+      if (!hour.length) {
+        node.textContent = `Nothing in the last hour. The last event was ${whenLabel(state.events[0])}.`;
+        return;
+      }
+      const sessions = new Set(hour.map((e) => e.sessionId)).size;
+      let text = `${plural(hour.length, "event", "events")} in the last hour from ${plural(sessions, "session", "sessions")}.`;
+      if (targets.length) text += ` Most clicked: ${targets[0][0]} (${targets[0][1].toLocaleString()}).`;
+      node.textContent = text;
+    }
+
+    function niceStep(max) {
+      const raw = Math.max(1, Math.ceil((max + 1) / 4));
+      const base = Math.pow(10, Math.floor(Math.log10(raw)));
+      for (const m of [1, 2, 5, 10]) if (raw <= m * base) return m * base;
+      return 10 * base;
+    }
+
+    function renderChart() {
+      const host = $("chart");
+      const width = host.clientWidth;
+      if (!width) return;
+      const height = 196;
+      const left = 30;
+      const top = 8;
+      const bottom = 24;
+      const plotW = width - left;
+      const plotH = height - top - bottom;
+      const end = Math.floor(now() / MINUTE) * MINUTE;
+      const counts = new Array(BUCKETS).fill(0);
+      for (const e of state.events) {
+        const back = Math.max(0, (end - Math.floor(stamp(e) / MINUTE) * MINUTE) / MINUTE);
+        const index = BUCKETS - 1 - back;
+        if (index >= 0 && index < BUCKETS) counts[index] += 1;
+      }
+      const step = niceStep(Math.max(...counts));
+      const ceiling = step * 4;
+      const svg = svgEl("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": "Events per minute over the last 30 minutes" });
+
+      for (let i = 0; i <= 4; i += 1) {
+        const y = top + plotH - (i / 4) * plotH;
+        svg.append(svgEl("line", { x1: left, x2: width, y1: y, y2: y, stroke: i === 0 ? "#d4d4d4" : "#ececec", "stroke-width": 1 }));
+        const label = svgEl("text", { x: left - 8, y: y + 4, "text-anchor": "end", class: "tick" });
+        label.textContent = String(i * step);
+        svg.append(label);
+      }
+
+      const slot = plotW / BUCKETS;
+      counts.forEach((n, i) => {
+        if (!n) return;
+        const h = (n / ceiling) * plotH;
+        const bar = svgEl("rect", { x: left + i * slot + 1, y: top + plotH - h, width: Math.max(1, slot - 2), height: h, fill: "#1d5fbf" });
+        const tip = svgEl("title", {});
+        tip.textContent = `${clock(end - (BUCKETS - 1 - i) * MINUTE)} · ${plural(n, "event", "events")}`;
+        bar.append(tip);
+        svg.append(bar);
+      });
+
+      [4, 9, 14, 19, 24, 29].forEach((i) => {
+        const last = i === BUCKETS - 1;
+        const label = svgEl("text", {
+          x: last ? width : left + i * slot + slot / 2,
+          y: height - 6,
+          "text-anchor": last ? "end" : "middle",
+          class: "tick"
+        });
+        label.textContent = clock(end - (BUCKETS - 1 - i) * MINUTE);
+        svg.append(label);
+      });
+
+      host.replaceChildren(svg);
+    }
+
+    function renderTop(targets) {
+      const list = $("top");
+      const rows = targets.slice(0, 4);
+      $("top-empty").hidden = rows.length > 0;
+      const total = targets.reduce((sum, [, count]) => sum + count, 0);
+      $("top-foot").textContent = rows.length ? `${plural(total, "click", "clicks")} on ${plural(targets.length, "target", "targets")}` : "";
+      list.replaceChildren(
+        ...rows.map(([name, count], index) => {
+          const li = document.createElement("li");
+          if (index === 0) li.className = "top";
+          const label = document.createElement("span");
+          label.className = "name";
+          label.textContent = name;
+          const value = document.createElement("span");
+          value.className = "count";
+          value.textContent = count.toLocaleString();
+          const track = document.createElement("div");
+          track.className = "track";
+          const fill = document.createElement("div");
+          fill.className = "fill";
+          fill.style.width = `${(count / rows[0][1]) * 100}%`;
+          track.append(fill);
+          li.append(label, value, track);
+          return li;
+        })
+      );
+    }
+
+    function cell(className, ...children) {
+      const td = document.createElement("td");
+      td.className = className;
+      td.append(...children);
+      return td;
+    }
+
+    function textSpan(className, text) {
+      const span = document.createElement("span");
+      span.className = className;
+      span.textContent = text;
+      return span;
+    }
+
+    function feedRow(e) {
+      const tr = document.createElement("tr");
+      const fresh = textSpan("fresh" + (now() - stamp(e) < 10000 ? " on" : ""), "");
+      fresh.setAttribute("aria-hidden", "true");
+      const type = document.createElement("div");
+      type.className = "type-cell";
+      type.append(fresh, textSpan("chip", TYPE_LABEL[e.eventType] || e.eventType));
+
+      const targetCell = cell("col-target", e.target || "–");
+      targetCell.append(textSpan("sub", e.page));
+
+      const when = cell("col-when", whenLabel(e));
+      when.title = new Date(stamp(e)).toLocaleString();
+
+      tr.append(
+        cell("col-type", type),
+        targetCell,
+        cell("col-page", e.page),
+        cell("col-session", textSpan("session", e.sessionId.replace(/^sess-/, "").slice(0, 8))),
+        when
+      );
+      return tr;
+    }
+
+    function renderFeed() {
+      const filtered = state.events.filter(FILTERS[state.filter]);
+      const rows = filtered.slice(0, FEED_ROWS);
+      $("feed").replaceChildren(...rows.map(feedRow));
+      $("feed-count").textContent = filtered.length ? `Showing ${rows.length} of ${filtered.length.toLocaleString()}` : "";
+      const empty = $("feed-empty");
+      empty.hidden = filtered.length > 0;
+      if (!filtered.length) {
+        empty.textContent = state.events.length
+          ? "No events of this kind yet."
+          : "No events yet. Open localhost:3000 and click something.";
+      }
+    }
+
+    function render() {
+      const hour = state.events.filter((e) => now() - stamp(e) < HOUR);
+      const targets = topTargets(hour);
+      renderStatus();
+      renderKpis(hour);
+      renderFinding(hour, targets);
+      renderChart();
+      renderTop(targets);
+      renderFeed();
+    }
+
+    document.querySelectorAll("[data-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.filter = button.dataset.filter;
+        document.querySelectorAll("[data-filter]").forEach((other) => {
+          other.setAttribute("aria-pressed", String(other === button));
+        });
+        renderFeed();
+      });
+    });
+
+    $("pause").addEventListener("click", () => {
+      state.paused = !state.paused;
+      $("pause").textContent = state.paused ? "Resume" : "Pause";
+      if (state.paused) render();
+      else poll();
+    });
+
+    new ResizeObserver(renderChart).observe($("chart"));
+    poll();
+    setInterval(poll, POLL_MS);
+    setInterval(() => { if (!state.paused) render(); }, 1000);
+  </script>
+</body>
+</html>

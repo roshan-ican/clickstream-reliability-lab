@@ -1,0 +1,12 @@
+services:
+  aws-emulator:
+    build:
+      context: .
+      dockerfile: Dockerfile.emulator
+    command: ["-p", "9297"]
+    ports:
+      - "127.0.0.1:9297:9297"
+    volumes:
+      - ${USERPROFILE}/.aws/emulator:/home/emulator/.aws/emulator
+    mem_limit: 2g
+    memswap_limit: 2g
